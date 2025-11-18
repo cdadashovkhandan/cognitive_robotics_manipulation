@@ -164,8 +164,10 @@ Here is a screenshot of the result:
   - GR-CONV [default]: https://github.com/skumra/robotic-grasping 
   - GGCNN:  https://github.com/dougsm/ggcnn
   - C_GR_ConvNet: https://github.com/krishkribo/3D_GDM-RSON
-  - VGN: https://github.com/ethz-asl/vgn
   - GDP [implemented as a baseline in VGN repo]: https://github.com/ethz-asl/vgn
+  - HGGD: https://github.com/THU-VCLab/HGGD
+  - S4G: https://github.com/yzqin/s4g-release
+  - VGN: https://github.com/ethz-asl/vgn 
    
 
 - Papers:
@@ -173,7 +175,7 @@ Here is a screenshot of the result:
   
   - Oude Vrielink, Jeroen, Hamidreza Kasaei. Learning to grasp objects in highly cluttered environments using Deep Convolutional Neural Networks. BSc Diss. 2021.
   
-  - Sulabh Kumra, Shirin Joshi, and Ferat Sahin.  Antipodal robotic grasping using generative residual convolutional neural network. In 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems(IROS), pages 9626–9633, 2020. doi: 10.1109/IROS45743.2020.9340777.
+  - Sulabh Kumra, Shirin Joshi, and Ferat Sahin.  Antipodal robotic grasping using a generative residual convolutional neural network. In 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems(IROS), pages 9626–9633, 2020. doi: 10.1109/IROS45743.2020.9340777.
 
 ## CONTACT INFORMATION 
 
