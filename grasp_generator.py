@@ -139,6 +139,10 @@ class GraspGenerator:
             depth = np.expand_dims(np.array(depth), axis=2)
             img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
             x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
+        elif (self.network == "GG_CNN"):
+            depth = np.expand_dims(np.array(depth), axis=2)
+            img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
+            x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
         else:
             print("The selected network has not been implemented yet -- please choose another network!")
             exit() 
@@ -156,8 +160,16 @@ class GraspGenerator:
                                                                 pred['sin'],
                                                                 pred['width'],
                                                                 pixels_max_grasp)
-            else: 
-                print ("you need to add your function here!")        
+            elif (self.network == "GG_CNN"): 
+                ##### GG_CNN #####
+                pred = self.net.predict(xc)
+                print (pred)
+                pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
+                q_img, ang_img, width_img = self.post_process_output(pred['pos'],
+                                                                pred['cos'],
+                                                                pred['sin'],
+                                                                pred['width'],
+                                                                pixels_max_grasp)
         
         save_name = None
         if show_output:
