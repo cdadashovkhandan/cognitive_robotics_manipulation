@@ -27,7 +27,7 @@ class GrasppingScenarios():
 
         elif (network_model=="GG_CNN"):
             ##### GG-CNN #####
-            self.IMG_SIZE = 256
+            self.IMG_SIZE = 300
             self.network_path = 'trained_models/GG_CNN/ggcnn_epoch_23_cornell'
             sys.path.append('trained_models/GG_CNN')
         else:

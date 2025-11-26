@@ -140,9 +140,10 @@ class GraspGenerator:
             img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
             x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
         elif (self.network == "GG_CNN"):
-            depth = np.expand_dims(np.array(depth), axis=2)
-            img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH, include_depth=True, include_rgb=False)
-            x, depth_img, rgb_img = img_data.get_data(rgb=None, depth=depth)
+            # depth = np.expand_dims(np.array(depth), axis=2)
+            # img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH, include_depth=True, include_rgb=False)
+            # x, depth_img, rgb_img = img_data.get_data(rgb=None, depth=depth)
+            x = torch.from_numpy(np.expand_dims(depth, 0))
         else:
             print("The selected network has not been implemented yet -- please choose another network!")
             exit() 
