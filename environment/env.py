@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 import random
+import os
 
 
 class FailToReachTargetError(RuntimeError):
@@ -376,7 +377,19 @@ class Environment:
 
     def load_obj(self, path, pos, yaw, mod_orn=False, mod_stiffness=False):
         orn = p.getQuaternionFromEuler([0, 0, yaw])
-        obj_id = p.loadURDF(path, pos, orn)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == '.sdf':
+            # Google scanned objects（SDF）
+            obj_ids = p.loadSDF(path, globalScaling=1.0)
+            obj_id = obj_ids[0]
+
+            base_dir = os.path.dirname(path)
+            default_tex = os.path.join(base_dir, 'materials', 'textures', 'texture.png')
+            if os.path.exists(default_tex):
+                texture_id = p.loadTexture(default_tex)
+                p.changeVisualShape(obj_id, -1, textureUniqueId=texture_id)
+        else:
+            obj_id = p.loadURDF(path, pos, orn)
         # adjust position according to height
         aabb = p.getAABB(obj_id, -1)
         if mod_orn:

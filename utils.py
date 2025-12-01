@@ -13,18 +13,40 @@ class YcbObjects:
         self.load_path = load_path
         self.mod_orn = mod_orn
         self.mod_stiffness = mod_stiffness
-        with open(load_path + '/obj_list.txt') as f:
-            lines = f.readlines()
-            self.obj_names = [line.rstrip('\n') for line in lines]
-        if exclude is not None:
-            for obj_name in exclude:
+        self.exclude = exclude or []
+
+        obj_list_path = os.path.join(load_path, '/obj_list.txt')
+        if os.path.exists(obj_list_path):
+            with open(obj_list_path) as f:
+                lines = f.readlines()
+                self.obj_names = [line.rstrip('\n') for line in lines]
+        else:
+            self.obj_names = [
+                d for d in os.listdir(load_path)
+                if os.path.isdir(os.path.join(load_path, d))
+            ]
+
+        for obj_name in self.exclude:
+            if obj_name in self.obj_names:
                 self.obj_names.remove(obj_name)
 
     def shuffle_objects(self):
         random.shuffle(self.obj_names)
 
     def get_obj_path(self, obj_name):
-        return f'{self.load_path}/Ycb{obj_name}/model.urdf'
+        urdf_path = os.path.join(self.load_path, obj_name, 'model.urdf')
+        sdf_path = os.path.join(self.load_path, obj_name, 'model.sdf')
+
+        if os.path.exists(urdf_path):
+            path = urdf_path
+        elif os.path.exists(sdf_path):
+            path = sdf_path
+        else:
+            raise FileNotFoundError(
+                f"No model.urdf or model.sdf found for {obj_name} in {self.load_path}"
+            )
+
+        return path
 
     def check_mod_orn(self, obj_name):
         if self.mod_orn is not None and obj_name in self.mod_orn:
@@ -44,6 +66,7 @@ class YcbObjects:
         for obj_name in self.obj_names[:n]:
             info.append(self.get_obj_info(obj_name))
         return info
+
 
 
 class PackPileData:
@@ -271,22 +294,41 @@ def plot(path, tries, target, grasp, trials):
 
 
 def write_summary(path, tries, target, grasp):
-    with open(path+'/summary.txt', 'w') as f:
+    with open(path + '/summary.txt', 'w') as f:
         total_tries = sum(tries.values())
         total_target = sum(target.values())
         total_grasp = sum(grasp.values())
+
         f.write('Total:\n')
-        f.write(
-            f'Grasp acc={total_grasp/total_tries:.3f} ({total_grasp}/{total_tries}) --- Manipulation acc={total_target/total_tries:.3f} ({total_target}/{total_tries}) \n')
-        f.write('\n')
+
+        # --- SAFETY: avoid division by zero if there were no trials at all ---
+        if total_tries == 0:
+            f.write('No attempts were recorded (total_tries = 0).\n\n')
+        else:
+            f.write(
+                f'Grasp acc={total_grasp/total_tries:.3f} ({total_grasp}/{total_tries}) '
+                f'--- Manipulation acc={total_target/total_tries:.3f} ({total_target}/{total_tries}) \n'
+            )
+            f.write('\n')
+
         f.write("Accuracy per object:\n")
         for obj in tries.keys():
             n_tries = tries[obj]
             n_t = target[obj]
             n_g = grasp[obj]
-            f.write(
-                f'{obj}: Grasp acc={n_g/n_tries:.3f} ({n_g}/{n_tries}) --- Manipulation acc={n_t/n_tries:.3f} ({n_t}/{n_tries}) \n')
 
+            # --- SAFETY: skip / mark objects that were never tried ---
+            if n_tries == 0:
+                # This happens when the object was in obj_names but never selected
+                f.write(
+                    f'{obj}: no attempts (0/0) for grasp and manipulation\n'
+                )
+                continue
+
+            f.write(
+                f'{obj}: Grasp acc={n_g/n_tries:.3f} ({n_g}/{n_tries}) '
+                f'--- Manipulation acc={n_t/n_tries:.3f} ({n_t}/{n_tries}) \n'
+            )
 
 def summarize(path, trials,modelname):
     # with open(path+'/data_tries.json') as data:
@@ -344,22 +386,40 @@ def plot_specific_model(path, tries, target, grasp, trials, modelname):
 
 
 def write_summary_specific_model(path, tries, target, grasp, modelname):
-    with open(path+'/'+modelname+'_summary.txt', 'w') as f:
+    with open(path + '/' + modelname + '_summary.txt', 'w') as f:
         total_tries = sum(tries.values())
         total_target = sum(target.values())
         total_grasp = sum(grasp.values())
+
         f.write('Total:\n')
-        f.write(
-            f'Target acc={total_target/total_tries:.3f} ({total_target}/{total_tries}) Grasp acc={total_grasp/total_tries:.3f} ({total_grasp}/{total_tries})\n')
-        f.write('\n')
+
+        # --- SAFETY: avoid division by zero if there were no trials at all ---
+        if total_tries == 0:
+            f.write('No attempts were recorded (total_tries = 0).\n\n')
+        else:
+            f.write(
+                f'Target acc={total_target/total_tries:.3f} ({total_target}/{total_tries}) '
+                f'Grasp acc={total_grasp/total_tries:.3f} ({total_grasp}/{total_tries})\n'
+            )
+            f.write('\n')
+
         f.write("Accuracy per object:\n")
         for obj in tries.keys():
             n_tries = tries[obj]
             n_t = target[obj]
             n_g = grasp[obj]
-            f.write(
-                f'{obj}: Target acc={n_t/n_tries:.3f} ({n_t}/{n_tries}) Grasp acc={n_g/n_tries:.3f} ({n_g}/{n_tries})\n')
 
+            # --- SAFETY: handle objects that were never tried ---
+            if n_tries == 0:
+                f.write(
+                    f'{obj}: no attempts (0/0) for grasp and manipulation\n'
+                )
+                continue
+
+            f.write(
+                f'{obj}: Target acc={n_t/n_tries:.3f} ({n_t}/{n_tries}) '
+                f'Grasp acc={n_g/n_tries:.3f} ({n_g}/{n_tries})\n'
+            )
 
 def summarize_specific_model(path, trials, modelname):
     with open(path+'/'+modelname+'_data_tries.json') as data:
