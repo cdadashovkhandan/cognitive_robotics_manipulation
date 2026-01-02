@@ -80,7 +80,15 @@ class GrasppingScenarios():
             return False
         else:
             return True
-                    
+
+    def setup_camera(self):
+        # TODO: proper condition
+        if mode == EyeOnHand:
+            camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, env.link) 
+        else:
+            center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
+            camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, None, None) 
+        return camera
                     
     def isolated_obj_scenario(self,runs, device, vis, output, debug):
 
@@ -93,8 +101,7 @@ class GrasppingScenarios():
         data = IsolatedObjData(objects.obj_names, runs, 'results')
 
         ## camera settings: cam_pos, cam_target, near, far, size, fov
-        center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = self.setup_camera()
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
@@ -220,8 +227,7 @@ class GrasppingScenarios():
             data = PackPileData(number_of_objects, runs, 'results', 'pile')
 
 
-        center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = self.setup_camera()
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)

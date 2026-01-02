@@ -185,7 +185,7 @@ class Camera:
 
         self.rec_id = None
 
-    def get_cam_img(self):
+    def get_cam_img(self, link_pos = None, link_orn = None):
         """
         Method to get images from camera
         return:
@@ -193,6 +193,10 @@ class Camera:
         depth
         segmentation mask
         """
+
+        if link_pos is not None and link_orn is not None:
+            pass
+        
         # Get depth values using the OpenGL renderer
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
