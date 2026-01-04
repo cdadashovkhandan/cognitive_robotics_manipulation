@@ -195,7 +195,7 @@ class Camera:
         """
 
         if link_pos is not None and link_orn is not None:
-            pass
+            pass'
         
         # Get depth values using the OpenGL renderer
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,

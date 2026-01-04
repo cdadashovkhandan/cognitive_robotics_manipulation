@@ -83,7 +83,7 @@ class GrasppingScenarios():
 
     def setup_camera(self):
         # TODO: proper condition
-        if mode == EyeOnHand:
+        if camera_mode
             camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, env.link) 
         else:
             center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
@@ -377,7 +377,8 @@ def parse_args():
     parser.add_argument('--device', type=str, default='cpu', help='device (cpu/gpu)')
     parser.add_argument('--vis', type=bool, default=True, help='vis (True/False)')
     parser.add_argument('--report', type=bool, default=True, help='report (True/False)')
-
+    parser.add_argument('--camera-mode', dest="camera_mode" type=str, default="fixed", help='choose between fixed/wrist cameras')
+    parser.add_argument('--camera-type', dest="camera_type" type=str, default="mono", help='choose between mono/stereo camera')
                         
     args = parser.parse_args()
     return args
@@ -391,6 +392,8 @@ if __name__ == '__main__':
     device=args.device
     vis=args.vis
     report=args.report
+    camera_type = args.camera_type
+    camera_mode = args.camera_mode
     
     grasp = GrasppingScenarios(args.network)
 
