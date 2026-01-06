@@ -203,7 +203,7 @@ class Camera:
         forward = R.dot(local_forward)
         up = R.dot(local_up)
 
-        target_offset = 0.05    # Point a bit in front of the EE.
+        target_offset = 0.8    # Point a bit in front of the EE.
         camera_backoff = 0.40   # Distance behind the EE along -forward.
         camera_height = 0.2    # Small offset along up to avoid collision.
         
@@ -214,6 +214,7 @@ class Camera:
         self.view_matrix = p.computeViewMatrix(new_pos, target_pos, up.tolist())
         self.x, self.y, self.z = new_pos
         self.x_t, self.y_t, self.z_t = target_pos
+        print("MATCH WRIST: Camera position:", self.x, self.y, self.z)
 
     def get_cam_img(self, link_pos = None, link_orn = None):
         """

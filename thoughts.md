@@ -40,3 +40,14 @@ setting camera position and instantiating the right camera type (!!)
 
 other than that this should be a one day job ffr.
 
+______________________________
+
+
+Okay so 
+
+we have the issue that the grasp detector is not correctly matching up its detected grasps to the real world. if I look at the camera output files, things do make sense, so it's just a matter of translating the right thing.
+
+the camera has roughyly the same orientation, but a completely differnet position.
+
+
+I think te problem lies in GraspGenerator:grasp_to_robot_frame

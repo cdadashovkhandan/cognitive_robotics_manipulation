@@ -218,7 +218,7 @@ class Environment:
     def reset_robot(self):
         joint0 = 0
         if self.camera.camera_mode == "wrist":
-            joint0 = -1.54;
+            joint0 = -1.5707970583733368
             
         user_parameters = (joint0, -1.5446774605904932, 1.54, -1.54,
                            -1.5707970583733368, 0.0009377758247187636, 0.085)
