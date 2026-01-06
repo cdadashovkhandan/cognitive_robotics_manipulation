@@ -254,7 +254,7 @@ class GrasppingScenarios():
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
         
         if camera_mode == "wrist":
-            link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[::2]
+            link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[:2]
             camera.match_wrist(link_pos, link_orn)
         
         
