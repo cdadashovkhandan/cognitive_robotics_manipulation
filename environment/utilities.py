@@ -196,20 +196,19 @@ class Camera:
         mat = p.getMatrixFromQuaternion(link_orn)
         R = np.array(mat).reshape(3, 3)
 
-        local_forward = np.array([1.0, 0.0, 0.0])
-        local_up = np.array([0.0, 0.0, 1.0])
+        up = R.dot(np.array([0.0, 0.0, 1.0]))
 
-        # Rotate into world frame.
-        forward = R.dot(local_forward)
-        up = R.dot(local_up)
+        front_offset = 0.8    # Point a bit in front of the EE.
+        camera_backoff = 0.4   # Distance behind the EE along -forward.
+        camera_height = 0.23   # Small offset along up to avoid collision.
 
-        target_offset = 0.8    # Point a bit in front of the EE.
-        camera_backoff = 0.40   # Distance behind the EE along -forward.
-        camera_height = 0.2    # Small offset along up to avoid collision.
+        camera_offset = np.array([-camera_backoff, 0, camera_height])
+        target_offset = np.array([front_offset, 0, camera_height])
         
         # Compute world-space target and camera positions.
-        target_pos = (link_pos + forward * target_offset + up * camera_height).tolist()
-        new_pos = (link_pos - forward * camera_backoff + up * camera_height)    .tolist()
+        # new:
+        target_pos = link_pos + R.dot(target_offset)
+        new_pos = link_pos + R.dot(camera_offset)
         
         self.view_matrix = p.computeViewMatrix(new_pos, target_pos, up.tolist())
         self.x, self.y, self.z = new_pos
