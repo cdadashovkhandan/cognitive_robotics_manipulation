@@ -4,6 +4,9 @@ from attrdict import AttrDict
 import functools
 import os
 from datetime import datetime
+import numpy as np
+import math
+from .stereo_depth import StereoDepthSGBM, Intrinsics
 
 
 def setup_sisbot(p, robotID, gripper_type):
@@ -197,6 +200,10 @@ class Camera:
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
+        rgb = np.array(rgb, dtype=np.uint8).reshape((_h, _w, 4))
+        depth = np.array(depth).reshape((_h, _w))
+        seg = np.array(seg).reshape((_h, _w))
+
         return rgb[:, :, 0:3], depth, seg
 
     def start_recording(self, save_dir):
@@ -211,3 +218,90 @@ class Camera:
     def stop_recording(self):
         p.stopStateLogging(self.rec_id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
+
+class StereoCamera:
+    """
+    Stereo camera wrapper that returns a PyBullet-like depth buffer computed from stereo RGB.
+
+    It constructs two parallel cameras (left/right) by shifting the camera position/target
+    along the camera's right axis by +/- baseline/2.
+
+    Output of get_cam_img() matches Camera.get_cam_img():
+      - rgb: left RGB
+      - depth: non-linear depth buffer in [0,1]
+      - seg: left segmentation mask
+    """
+
+    def __init__(self,
+                 cam_pos, cam_target,
+                 near, far, size, fov,
+                 baseline_m: float = 0.2,
+                 num_disparities: int = 128,
+                 block_size: int = 5,
+                 invalid_depth_value: float = 0.0):
+        self.baseline_m = float(baseline_m)
+        self.num_disparities = int(num_disparities)
+        self.block_size = int(block_size)
+        self.invalid_depth_value = float(invalid_depth_value)
+
+        self.x, self.y, self.z = cam_pos
+        self.x_t, self.y_t, self.z_t = cam_target
+        self.width, self.height = size
+        self.near, self.far = near, far
+        self.fov = fov
+
+        # Compute camera right vector from forward and world up
+        cam_pos_np = np.array(cam_pos, dtype=np.float32)
+        cam_target_np = np.array(cam_target, dtype=np.float32)
+
+        forward = cam_target_np - cam_pos_np
+        forward = forward / (np.linalg.norm(forward) + 1e-8)
+
+        up = np.array([0, 1, 0], dtype=np.float32)
+        right = np.cross(forward, up)
+        right = right / (np.linalg.norm(right) + 1e-8)
+
+        half = 0.5 * self.baseline_m
+        left_pos = (cam_pos_np - half * right).tolist()
+        right_pos = (cam_pos_np + half * right).tolist()
+        left_target = cam_target_np.tolist()
+        right_target = cam_target_np.tolist()
+
+        print("Stereo left_pos:", left_pos, "right_pos:", right_pos, "baseline:", self.baseline_m)
+
+        self.left_cam = Camera(left_pos, left_target, near, far, size, fov)
+        self.right_cam = Camera(right_pos, right_target, near, far, size, fov)
+
+        # Compute fx in pixel units (PyBullet fov is vertical FOV in degrees)
+        fov_rad = math.radians(self.fov)
+        fy = (self.height / 2.0) / math.tan(fov_rad / 2.0)
+        self.fx = fy * (self.width / self.height)
+
+        self.stereo = StereoDepthSGBM(
+            num_disparities=self.num_disparities,
+            block_size=self.block_size,
+            min_disparity=0
+        )
+        self.K = Intrinsics(fx=self.fx, fy=self.fx, cx=self.width / 2.0, cy=self.height / 2.0)
+
+    def get_stereo_pair(self):
+        left_rgb, _, left_seg = self.left_cam.get_cam_img()
+        right_rgb, _, _ = self.right_cam.get_cam_img()
+
+        diff = np.mean(np.abs(left_rgb.astype(np.int16) - right_rgb.astype(np.int16)))
+        print("mean abs RGB diff:", diff)
+        return left_rgb, right_rgb, left_seg
+
+    def get_cam_img(self):
+        left_rgb, right_rgb, left_seg = self.get_stereo_pair()
+
+        depth_buf = self.stereo.estimate_depth_buffer(
+            left_rgb, right_rgb,
+            K=self.K,
+            baseline_m=self.baseline_m,
+            near=self.near,
+            far=self.far,
+            invalid_value=self.invalid_depth_value
+        )
+
+        return left_rgb, depth_buf, left_seg

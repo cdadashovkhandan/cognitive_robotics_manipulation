@@ -1,5 +1,5 @@
 from grasp_generator import GraspGenerator
-from environment.utilities import Camera
+from environment.utilities import Camera, StereoCamera
 from environment.env import Environment
 from utils import YcbObjects, PackPileData, IsolatedObjData, summarize
 import numpy as np
@@ -94,7 +94,7 @@ class GrasppingScenarios():
 
         ## camera settings: cam_pos, cam_target, near, far, size, fov
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.4), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
@@ -221,7 +221,7 @@ class GrasppingScenarios():
 
 
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
