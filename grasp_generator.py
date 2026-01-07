@@ -60,9 +60,12 @@ class GraspGenerator:
         return self.get_transform_matrix(self.camera.x, self.camera.y, self.camera.z, self.CAM_ROTATION)
 
     def get_transform_matrix(self, x, y, z, rot):
+        scale_factor_x = abs(0.8 / x)
+        scale_factor_y = abs(0.8 / y)
+        print("SCALE FACTOR:", (scale_factor_x, scale_factor_y))
         return np.array([
-                        [np.cos(rot) / 2,   -np.sin(rot),   0,  x],
-                        [np.sin(rot),   np.cos(rot) /2,    0,  y],
+                        [np.cos(rot) / scale_factor_x,   -np.sin(rot),   0,  x],
+                        [np.sin(rot),   np.cos(rot) / scale_factor_y,    0,  y],
                         [0,             0,              1,  z],
                         [0,             0,              0,  1]
                         ])
