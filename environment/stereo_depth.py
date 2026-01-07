@@ -99,7 +99,7 @@ class StereoDepthSGBM:
                               baseline_m: float,
                               near: float,
                               far: float,
-                              invalid_value: float = 1.0) -> np.ndarray:
+                              invalid_value: float = 0.0) -> np.ndarray:
         """
         Returns a PyBullet/OpenGL-like depth buffer (0..1, non-linear), aligned with Camera.get_cam_img() output.
 

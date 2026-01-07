@@ -235,9 +235,9 @@ class StereoCamera:
     def __init__(self,
                  cam_pos, cam_target,
                  near, far, size, fov,
-                 baseline_m: float = 0.2,
+                 baseline_m: float = 0.3,
                  num_disparities: int = 128,
-                 block_size: int = 5,
+                 block_size: int = 7,
                  invalid_depth_value: float = 0.0):
         self.baseline_m = float(baseline_m)
         self.num_disparities = int(num_disparities)
@@ -282,7 +282,7 @@ class StereoCamera:
             block_size=self.block_size,
             min_disparity=0
         )
-        self.K = Intrinsics(fx=self.fx, fy=self.fx, cx=self.width / 2.0, cy=self.height / 2.0)
+        self.K = Intrinsics(fx=self.fx, fy=fy, cx=self.width / 2.0, cy=self.height / 2.0)
 
     def get_stereo_pair(self):
         left_rgb, _, left_seg = self.left_cam.get_cam_img()
