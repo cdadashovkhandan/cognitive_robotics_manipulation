@@ -103,7 +103,7 @@ class Environment:
             dist = 1.5
             yaw = 30
             pitch = -50
-            target = [0.1, -0.30, 0.95]
+            target = [camera.x_t, camera.y_t, camera.z_t]
             p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
 
             # camera model
@@ -216,7 +216,11 @@ class Environment:
         return x, y, z, roll, pitch, yaw, gripper_opening_length
 
     def reset_robot(self):
-        user_parameters = (0, -1.5446774605904932, 1.54, -1.54,
+        joint0 = 0
+        if self.camera.camera_mode == "wrist":
+            joint0 = -1.5707970583733368
+            
+        user_parameters = (joint0, -1.5446774605904932, 1.54, -1.54,
                            -1.5707970583733368, 0.0009377758247187636, 0.085)
         for _ in range(60):
             for i, name in enumerate(self.controlJoints):

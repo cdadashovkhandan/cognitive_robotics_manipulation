@@ -4,6 +4,7 @@ from attrdict import AttrDict
 import functools
 import os
 from datetime import datetime
+import numpy as np
 
 
 def setup_sisbot(p, robotID, gripper_type):
@@ -171,12 +172,13 @@ def setup_sisbot_force(p, robotID, gripper_type):
 
 
 class Camera:
-    def __init__(self, cam_pos, cam_target, near, far, size, fov):
+    def __init__(self, cam_pos, cam_target, near, far, size, fov, camera_mode):
         self.x, self.y, self.z = cam_pos
         self.x_t, self.y_t, self.z_t = cam_target
         self.width, self.height = size
         self.near, self.far = near, far
         self.fov = fov
+        self.camera_mode = camera_mode
 
         aspect = self.width / self.height
         self.projection_matrix = p.computeProjectionMatrixFOV(
@@ -185,7 +187,35 @@ class Camera:
 
         self.rec_id = None
 
-    def get_cam_img(self):
+    def match_wrist(self, link_pos, link_orn):
+        """
+        Reposition camera to be in the same place as the end effector (with offset) if Eye On Hand mode is enabled.
+        """
+        new_pos = link_pos
+
+        mat = p.getMatrixFromQuaternion(link_orn)
+        R = np.array(mat).reshape(3, 3)
+
+        up = R.dot(np.array([0.0, 0.0, 1.0]))
+
+        front_offset = 0.8    # Point a bit in front of the EE.
+        camera_backoff = 0.4   # Distance behind the EE along -forward.
+        camera_height = 0.20   # Small offset along up to avoid collision.
+
+        camera_offset = np.array([-camera_backoff, 0, camera_height])
+        target_offset = np.array([front_offset, 0, camera_height])
+        
+        # Compute world-space target and camera positions.
+        # new:
+        target_pos = link_pos + R.dot(target_offset)
+        new_pos = link_pos + R.dot(camera_offset)
+        
+        self.view_matrix = p.computeViewMatrix(new_pos, target_pos, up.tolist())
+        self.x, self.y, self.z = new_pos
+        self.x_t, self.y_t, self.z_t = target_pos
+        print("MATCH WRIST: Camera position:", self.x, self.y, self.z)
+
+    def get_cam_img(self, link_pos = None, link_orn = None, exclude_ids = None):
         """
         Method to get images from camera
         return:
@@ -193,11 +223,53 @@ class Camera:
         depth
         segmentation mask
         """
+        
+        if link_pos is not None and link_orn is not None:
+            self.match_wrist(link_pos, link_orn)
+
         # Get depth values using the OpenGL renderer
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        return rgb[:, :, 0:3], depth, seg
+        
+
+
+        # Mask out pixels of excluded objects
+        if exclude_ids:
+            print("Excluding robot...")
+            rgb = np.reshape(rgb, (self.height, self.width, 4))[:, :, 0:3]
+            depth = np.reshape(depth, (self.height, self.width))
+            seg = np.reshape(seg, (self.height, self.width)).astype(np.int32)
+            exclude_set = set(exclude_ids)
+            # segmentation encodes objectUniqueId (sometimes with link info in higher bits).
+            # Use lower 24 bits to be robust across versions.
+            
+            unique_ids = np.unique(seg)
+            print("UNIQUE ELEMS IN SEG MASK: ", unique_ids)
+
+            seg_obj = seg & 0xFFFFFF
+            mask = np.zeros_like(seg_obj, dtype=bool)
+            for eid in exclude_set:
+                mask |= (seg_obj == eid)
+            # Apply mask: zero RGB and set depth to maximum (so detectors relying on depth ignore them)
+
+            if mask.any():
+                inv_mask = ~mask
+                if unique_ids.size > 2:
+                    bg_depth = float(np.median(depth[inv_mask]))
+                    bg_rgb = rgb[inv_mask].mean(axis=0)
+                    rgb[mask] = bg_rgb
+                    depth[mask] = bg_depth
+                else:
+                    # only robot arm is present
+                    rgb[mask] = rgb[inv_mask][0]
+                    depth[mask] = depth[inv_mask][0]
+                    # clear segmentation for excluded pixels
+                seg[mask] = 0
+
+                
+
+        return rgb, depth, seg
 
     def start_recording(self, save_dir):
         if not os.path.exists(save_dir):

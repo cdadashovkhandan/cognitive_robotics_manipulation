@@ -71,16 +71,44 @@ class GrasppingScenarios():
         for _ in range(n):
             p.stepSimulation()
 
-    def is_there_any_object(self,camera):
+    def is_there_any_object(self, camera, env, link_pos, link_orn):
         self.dummy_simulation_steps(10)
-        rgb, depth, _ = camera.get_cam_img()
-        #print ("min RGB = ", rgb.min(), "max RGB = ", rgb.max(), "rgb.avg() = ", np.average(rgb))
-        #print ("min depth = ", depth.min(), "max depth = ", depth.max())
+
+        rgb, depth, seg = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
+        print("UNIQUE ELEM COUNT = ", np.unique(seg).size)
+        if camera.camera_mode == "wrist" and np.unique(seg).size < 3:
+            return False
+        
         if (depth.max()- depth.min() < 0.0025):
             return False
         else:
             return True
-                    
+
+    def setup_camera(self):
+        
+        #Pseudocode:
+        '''
+            if camera mode is stereo
+                instantiate stereo camera
+            if camera mode is mono
+                instantiate a single camera
+
+            if camera mode is fixed
+                establish fixed position
+            if camera mode is on-wrist
+                set to on-wrist starting position
+        '''
+
+
+        # if camera_mode:
+        #     camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, env.link) 
+        # else:
+        #     center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
+        #     camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, None, None) 
+
+        center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
+        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.3, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+        return camera
                     
     def isolated_obj_scenario(self,runs, device, vis, output, debug):
 
@@ -93,9 +121,14 @@ class GrasppingScenarios():
         data = IsolatedObjData(objects.obj_names, runs, 'results')
 
         ## camera settings: cam_pos, cam_target, near, far, size, fov
-        center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = self.setup_camera()
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
+
+        link_pos = None
+        link_orn = None
+
+        if camera_mode == "wrist":
+            link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[:2]
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
         
@@ -119,9 +152,9 @@ class GrasppingScenarios():
                 number_of_failures = 0
                 idx = 0 ## select the best grasp configuration
                 failed_grasp_counter = 0
-                while self.is_there_any_object(camera) and number_of_failures < number_of_attempts:     
+                while self.is_there_any_object(camera, env, link_pos, link_orn) and number_of_failures < number_of_attempts:     
                     
-                    bgr, depth, _ = camera.get_cam_img()
+                    bgr, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
 
                     ##convert BGR to RGB
                     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
@@ -220,9 +253,13 @@ class GrasppingScenarios():
             data = PackPileData(number_of_objects, runs, 'results', 'pile')
 
 
-        center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40)
+        camera = self.setup_camera()
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
+        
+        if camera_mode == "wrist":
+            link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[:2]
+            camera.match_wrist(link_pos, link_orn)
+        
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
 
@@ -258,13 +295,13 @@ class GrasppingScenarios():
             failed_grasp_counter = 0
             flag_failed_grasp_counter= False
 
-            while self.is_there_any_object(camera) and number_of_failures < number_of_attempts:                
+            while self.is_there_any_object(camera, env, link_pos, link_orn) and number_of_failures < number_of_attempts:                
                 #env.move_arm_away()
                 try: 
                     idx = 0 ## select the best grasp configuration
                     for i in range(number_of_attempts):
                         data.add_try()  
-                        rgb, depth, _ = camera.get_cam_img()
+                        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
                         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
                         
                         grasps, save_name = generator.predict_grasp( rgb, depth, n_grasps=number_of_attempts, show_output=output)
@@ -372,6 +409,10 @@ def parse_args():
     parser.add_argument('--vis', type=bool, default=True, help='vis (True/False)')
     parser.add_argument('--report', type=bool, default=True, help='report (True/False)')
 
+    # Custom camera settings
+
+    parser.add_argument('--camera-mode', dest="camera_mode", type=str, default="fixed", help='choose between fixed/wrist cameras')
+    parser.add_argument('--camera-type', dest="camera_type", type=str, default="mono", help='choose between mono/stereo camera')
                         
     args = parser.parse_args()
     return args
@@ -385,6 +426,8 @@ if __name__ == '__main__':
     device=args.device
     vis=args.vis
     report=args.report
+    camera_type = args.camera_type
+    camera_mode = args.camera_mode
     
     grasp = GrasppingScenarios(args.network)
 

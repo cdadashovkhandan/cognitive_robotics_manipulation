@@ -17,7 +17,7 @@ import cv2
 class GraspGenerator:
     IMG_WIDTH = 224
     IMG_ROTATION = -np.pi * 0.5
-    CAM_ROTATION = 0
+    CAM_ROTATION = np.pi
     PIX_CONVERSION = 277
     DIST_BACKGROUND = 1.115
     MAX_GRASP = 0.085
@@ -36,7 +36,7 @@ class GraspGenerator:
 
         # print (self.net)
 
-        
+        self.camera = camera
         self.near = camera.near
         self.far = camera.far
         self.depth_r = depth_radius
@@ -55,13 +55,17 @@ class GraspGenerator:
                                                     img_center/self.PIX_CONVERSION,
                                                     0,
                                                     self.IMG_ROTATION)
-        self.cam_to_robot_base = self.get_transform_matrix(
-            camera.x, camera.y, camera.z, self.CAM_ROTATION)
+    def cam_to_robot_base(self):
+        print("CAM_TO_ROBOT_BASE: Camera position:", self.camera.x, self.camera.y, self.camera.z)
+        return self.get_transform_matrix(self.camera.x, self.camera.y, self.camera.z, self.CAM_ROTATION)
 
     def get_transform_matrix(self, x, y, z, rot):
+        scale_factor_x = abs(0.8 / x)
+        scale_factor_y = abs(0.8 / y)
+        print("SCALE FACTOR:", (scale_factor_x, scale_factor_y))
         return np.array([
-                        [np.cos(rot),   -np.sin(rot),   0,  x],
-                        [np.sin(rot),   np.cos(rot),    0,  y],
+                        [np.cos(rot) / scale_factor_x,   -np.sin(rot),   0,  x],
+                        [np.sin(rot),   np.cos(rot) / scale_factor_y,    0,  y],
                         [0,             0,              1,  z],
                         [0,             0,              0,  1]
                         ])
@@ -70,6 +74,7 @@ class GraspGenerator:
         """
         return: x, y, z, roll, opening length gripper, object height
         """
+        print ("Grasp:", grasp)
         # Get x, y, z of center pixel
         x_p, y_p = grasp.center[0], grasp.center[1]
 
@@ -93,7 +98,7 @@ class GraspGenerator:
         cam_space = np.matmul(self.img_to_cam, img_xyz)
 
         # Convert camera's 3D space to robot frame of reference
-        robot_frame_ref = np.matmul(self.cam_to_robot_base, cam_space)
+        robot_frame_ref = np.matmul(self.cam_to_robot_base(), cam_space)
 
         # Change direction of the angle and rotate by alpha rad
         roll = grasp.angle * -1 + (self.IMG_ROTATION)
@@ -105,7 +110,8 @@ class GraspGenerator:
                           self.PIX_CONVERSION)) * self.MAX_GRASP
 
         obj_height = self.DIST_BACKGROUND - z_p
-
+        print ("Grasp:", grasp)
+        print("Robot frame grasp (x,y,z,roll,opening_length,obj_height):", robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[2], roll, opening_length, obj_height)
         # return x, y, z, roll, opening length gripper
         return robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[2], roll, opening_length, obj_height
 
