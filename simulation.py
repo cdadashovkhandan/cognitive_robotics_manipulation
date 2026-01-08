@@ -73,9 +73,12 @@ class GrasppingScenarios():
 
     def is_there_any_object(self, camera, env, link_pos, link_orn):
         self.dummy_simulation_steps(10)
-        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
-        #print ("min RGB = ", rgb.min(), "max RGB = ", rgb.max(), "rgb.avg() = ", np.average(rgb))
-        #print ("min depth = ", depth.min(), "max depth = ", depth.max())
+
+        rgb, depth, seg = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
+        print("UNIQUE ELEM COUNT = ", np.unique(seg).size)
+        if camera.camera_mode == "wrist" and np.unique(seg).size < 3:
+            return False
+        
         if (depth.max()- depth.min() < 0.0025):
             return False
         else:

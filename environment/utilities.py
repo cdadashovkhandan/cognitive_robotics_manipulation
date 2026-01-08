@@ -243,16 +243,31 @@ class Camera:
             exclude_set = set(exclude_ids)
             # segmentation encodes objectUniqueId (sometimes with link info in higher bits).
             # Use lower 24 bits to be robust across versions.
+            
+            unique_ids = np.unique(seg)
+            print("UNIQUE ELEMS IN SEG MASK: ", unique_ids)
+
             seg_obj = seg & 0xFFFFFF
             mask = np.zeros_like(seg_obj, dtype=bool)
             for eid in exclude_set:
                 mask |= (seg_obj == eid)
             # Apply mask: zero RGB and set depth to maximum (so detectors relying on depth ignore them)
-            print("RESULTING MASK")
-            print(mask.any())
+
             if mask.any():
-                rgb[mask] = 0
-                depth[mask] = depth.max()
+                inv_mask = ~mask
+                if unique_ids.size > 2:
+                    bg_depth = float(np.median(depth[inv_mask]))
+                    bg_rgb = rgb[inv_mask].mean(axis=0)
+                    rgb[mask] = bg_rgb
+                    depth[mask] = bg_depth
+                else:
+                    # only robot arm is present
+                    rgb[mask] = rgb[inv_mask][0]
+                    depth[mask] = depth[inv_mask][0]
+                    # clear segmentation for excluded pixels
+                seg[mask] = 0
+
+                
 
         return rgb, depth, seg
 
