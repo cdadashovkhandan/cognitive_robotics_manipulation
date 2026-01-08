@@ -88,15 +88,7 @@ class GrasppingScenarios():
         
         #Pseudocode:
         '''
-            if camera mode is stereo
-                instantiate stereo camera
-            if camera mode is mono
-                instantiate a single camera
-
-            if camera mode is fixed
-                establish fixed position
-            if camera mode is on-wrist
-                set to on-wrist starting position
+            Instantiate a camera based on user parameters
         '''
 
 
@@ -109,7 +101,13 @@ class GrasppingScenarios():
         near_plane = 0.3 if camera_mode == "wrist" else 0.2
 
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+        if camera_type == "rgbd":
+            camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+        elif camera_type == "stereo":
+            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), 1.0, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45, camera_mode = camera_mode)
+        else:
+            raise ValueError("Invalid camera type")
+        
         return camera
                     
     def isolated_obj_scenario(self,runs, device, vis, output, debug):

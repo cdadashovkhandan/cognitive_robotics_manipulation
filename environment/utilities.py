@@ -174,7 +174,7 @@ def setup_sisbot_force(p, robotID, gripper_type):
 
 
 class Camera:
-    def __init__(self, cam_pos, cam_target, near, far, size, fov, camera_mode):
+    def __init__(self, cam_pos, cam_target, near, far, size, fov, camera_mode = "fixed"):
         self.x, self.y, self.z = cam_pos
         self.x_t, self.y_t, self.z_t = cam_target
         self.width, self.height = size
@@ -309,11 +309,13 @@ class StereoCamera:
                  baseline_m: float = 0.3,
                  num_disparities: int = 128,
                  block_size: int = 7,
-                 invalid_depth_value: float = 0.0):
+                 invalid_depth_value: float = 0.0,
+                 camera_mode: str = "fixed"):
         self.baseline_m = float(baseline_m)
         self.num_disparities = int(num_disparities)
         self.block_size = int(block_size)
         self.invalid_depth_value = float(invalid_depth_value)
+        self.camera_mode = camera_mode
 
         self.x, self.y, self.z = cam_pos
         self.x_t, self.y_t, self.z_t = cam_target
@@ -363,7 +365,7 @@ class StereoCamera:
         print("mean abs RGB diff:", diff)
         return left_rgb, right_rgb, left_seg
 
-    def get_cam_img(self):
+    def get_cam_img(self, link_pos = None, link_orn = None, exclude_ids = None):
         left_rgb, right_rgb, left_seg = self.get_stereo_pair()
 
         depth_buf = self.stereo.estimate_depth_buffer(

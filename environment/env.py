@@ -22,7 +22,7 @@ class Environment:
     Z_TABLE_TOP = 0.785
     GRIP_REDUCTION = 0.60
 
-    def __init__(self, camera: StereoCamera, vis=False, debug=False, gripper_type='140', finger_length=0.06) -> None:
+    def __init__(self, camera, vis=False, debug=False, gripper_type='140', finger_length=0.06) -> None:
         self.vis = vis
         self.debug = debug
         self.camera = camera
