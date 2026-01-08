@@ -17,7 +17,7 @@ import cv2
 class GraspGenerator:
     IMG_WIDTH = 224
     IMG_ROTATION = -np.pi * 0.5
-    CAM_ROTATION = np.pi
+    
     PIX_CONVERSION = 277
     DIST_BACKGROUND = 1.115
     MAX_GRASP = 0.085
@@ -37,6 +37,7 @@ class GraspGenerator:
         # print (self.net)
 
         self.camera = camera
+        self.cam_rotation = np.pi if camera.camera_mode == "wrist" else 0
         self.near = camera.near
         self.far = camera.far
         self.depth_r = depth_radius
@@ -57,11 +58,12 @@ class GraspGenerator:
                                                     self.IMG_ROTATION)
     def cam_to_robot_base(self):
         print("CAM_TO_ROBOT_BASE: Camera position:", self.camera.x, self.camera.y, self.camera.z)
-        return self.get_transform_matrix(self.camera.x, self.camera.y, self.camera.z, self.CAM_ROTATION)
+        return self.get_transform_matrix(self.camera.x, self.camera.y, self.camera.z, self.cam_rotation)
 
     def get_transform_matrix(self, x, y, z, rot):
-        scale_factor_x = abs(0.8 / x)
-        scale_factor_y = abs(0.8 / y)
+        wrist_mode = self.camera.camera_mode == "wrist"
+        scale_factor_x = abs(0.8 / x) if wrist_mode else 1
+        scale_factor_y = abs(0.8 / y) if wrist_mode else 1
         print("SCALE FACTOR:", (scale_factor_x, scale_factor_y))
         return np.array([
                         [np.cos(rot) / scale_factor_x,   -np.sin(rot),   0,  x],

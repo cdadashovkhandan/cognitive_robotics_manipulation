@@ -106,8 +106,10 @@ class GrasppingScenarios():
         #     center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
         #     camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, None, None) 
 
+        near_plane = 0.3 if camera_mode == "wrist" else 0.2
+
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.3, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
         return camera
                     
     def isolated_obj_scenario(self,runs, device, vis, output, debug):
