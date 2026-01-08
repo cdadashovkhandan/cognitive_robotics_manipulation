@@ -71,9 +71,9 @@ class GrasppingScenarios():
         for _ in range(n):
             p.stepSimulation()
 
-    def is_there_any_object(self,camera, link_pos, link_orn):
+    def is_there_any_object(self, camera, env, link_pos, link_orn):
         self.dummy_simulation_steps(10)
-        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn)
+        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
         #print ("min RGB = ", rgb.min(), "max RGB = ", rgb.max(), "rgb.avg() = ", np.average(rgb))
         #print ("min depth = ", depth.min(), "max depth = ", depth.max())
         if (depth.max()- depth.min() < 0.0025):
@@ -104,7 +104,7 @@ class GrasppingScenarios():
         #     camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, None, None) 
 
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
-        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+        camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.3, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
         return camera
                     
     def isolated_obj_scenario(self,runs, device, vis, output, debug):
@@ -149,9 +149,9 @@ class GrasppingScenarios():
                 number_of_failures = 0
                 idx = 0 ## select the best grasp configuration
                 failed_grasp_counter = 0
-                while self.is_there_any_object(camera, link_pos, link_orn) and number_of_failures < number_of_attempts:     
+                while self.is_there_any_object(camera, env, link_pos, link_orn) and number_of_failures < number_of_attempts:     
                     
-                    bgr, depth, _ = camera.get_cam_img(link_pos, link_orn)
+                    bgr, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
 
                     ##convert BGR to RGB
                     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
@@ -292,13 +292,13 @@ class GrasppingScenarios():
             failed_grasp_counter = 0
             flag_failed_grasp_counter= False
 
-            while self.is_there_any_object(camera, link_pos, link_orn) and number_of_failures < number_of_attempts:                
+            while self.is_there_any_object(camera, env, link_pos, link_orn) and number_of_failures < number_of_attempts:                
                 #env.move_arm_away()
                 try: 
                     idx = 0 ## select the best grasp configuration
                     for i in range(number_of_attempts):
                         data.add_try()  
-                        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn)
+                        rgb, depth, _ = camera.get_cam_img(link_pos, link_orn, [env.robot_id])
                         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
                         
                         grasps, save_name = generator.predict_grasp( rgb, depth, n_grasps=number_of_attempts, show_output=output)

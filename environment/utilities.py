@@ -200,7 +200,7 @@ class Camera:
 
         front_offset = 0.8    # Point a bit in front of the EE.
         camera_backoff = 0.4   # Distance behind the EE along -forward.
-        camera_height = 0.23   # Small offset along up to avoid collision.
+        camera_height = 0.20   # Small offset along up to avoid collision.
 
         camera_offset = np.array([-camera_backoff, 0, camera_height])
         target_offset = np.array([front_offset, 0, camera_height])
@@ -215,7 +215,7 @@ class Camera:
         self.x_t, self.y_t, self.z_t = target_pos
         print("MATCH WRIST: Camera position:", self.x, self.y, self.z)
 
-    def get_cam_img(self, link_pos = None, link_orn = None):
+    def get_cam_img(self, link_pos = None, link_orn = None, exclude_ids = None):
         """
         Method to get images from camera
         return:
@@ -231,7 +231,30 @@ class Camera:
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        return rgb[:, :, 0:3], depth, seg
+        
+
+
+        # Mask out pixels of excluded objects
+        if exclude_ids:
+            print("Excluding robot...")
+            rgb = np.reshape(rgb, (self.height, self.width, 4))[:, :, 0:3]
+            depth = np.reshape(depth, (self.height, self.width))
+            seg = np.reshape(seg, (self.height, self.width)).astype(np.int32)
+            exclude_set = set(exclude_ids)
+            # segmentation encodes objectUniqueId (sometimes with link info in higher bits).
+            # Use lower 24 bits to be robust across versions.
+            seg_obj = seg & 0xFFFFFF
+            mask = np.zeros_like(seg_obj, dtype=bool)
+            for eid in exclude_set:
+                mask |= (seg_obj == eid)
+            # Apply mask: zero RGB and set depth to maximum (so detectors relying on depth ignore them)
+            print("RESULTING MASK")
+            print(mask.any())
+            if mask.any():
+                rgb[mask] = 0
+                depth[mask] = depth.max()
+
+        return rgb, depth, seg
 
     def start_recording(self, save_dir):
         if not os.path.exists(save_dir):
