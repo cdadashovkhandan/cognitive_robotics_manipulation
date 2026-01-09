@@ -416,7 +416,7 @@ def parse_args():
     # Custom camera settings
 
     parser.add_argument('--camera-mode', dest="camera_mode", type=str, default="fixed", help='choose between fixed/wrist cameras')
-    parser.add_argument('--camera-type', dest="camera_type", type=str, default="mono", help='choose between mono/stereo camera')
+    parser.add_argument('--camera-type', dest="camera_type", type=str, default="rgbd", help='choose between rgbd/stereo camera')
                         
     args = parser.parse_args()
     return args
