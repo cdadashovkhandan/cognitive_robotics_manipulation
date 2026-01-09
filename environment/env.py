@@ -103,7 +103,7 @@ class Environment:
             dist = 1.5
             yaw = 30
             pitch = -50
-            target = [camera.x_t, camera.y_t, camera.z_t]
+            target = [0.1, -0.30, 0.95]
             p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
 
             # camera model
