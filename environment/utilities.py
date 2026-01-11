@@ -382,9 +382,17 @@ class StereoCamera(Camera):
         
         self.left_cam.x, self.left_cam.y, self.left_cam.z = (new_pos - half * right).tolist()
         self.right_cam.x, self.right_cam.y, self.right_cam.z = (new_pos + half * right).tolist()
+        
+        left_cam_pos = np.array([self.left_cam.x, self.left_cam.y, self.left_cam.z])
+        left_cam_target = np.array([self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t])
+        self.left_cam.view_matrix =  p.computeViewMatrix(left_cam_pos, left_cam_target, [0, 1, 0]) 
 
         self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t = new_target
         self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t = new_target
+
+        right_cam_pos = np.array([self.right_cam.x, self.right_cam.y, self.right_cam.z])
+        right_cam_target = np.array([self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t])
+        self.right_cam.view_matrix =  p.computeViewMatrix(right_cam_pos, right_cam_target, [0, 1, 0]) 
 
     def get_stereo_pair(self):
         left_rgb, _, left_seg = self.left_cam.get_cam_img()
