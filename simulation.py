@@ -102,9 +102,9 @@ class GrasppingScenarios():
 
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
         if camera_type == "rgbd":
-            camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
+            camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode = camera_mode) 
         elif camera_type == "stereo":
-            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), 1.0, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45, camera_mode = camera_mode)
+            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), 1.0, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45, camera_mode = camera_mode, baseline_m = 0.05)
         else:
             raise ValueError("Invalid camera type")
         

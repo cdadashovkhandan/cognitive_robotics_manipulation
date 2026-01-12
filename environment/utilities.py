@@ -237,14 +237,10 @@ class Camera:
         # depth = np.array(depth).reshape((_h, _w))
         # seg = np.array(seg).reshape((_h, _w))
 
-        
-
-
         # Mask out pixels of excluded objects
         if exclude_ids:
             rgb, depth, seg = self.exclude_items(rgb, depth, seg, exclude_ids)
 
-                
 
         return rgb, depth, seg
 
@@ -374,25 +370,42 @@ class StereoCamera(Camera):
         new_target = np.array([self.x_t, self.y_t, self.z_t])
         half = 0.5 * self.baseline_m
 
+        # compute forward and up consistently with parent camera
         forward = new_target - new_pos
         forward = forward / (np.linalg.norm(forward) + 1e-8)
-        up = np.array([0, 1, 0], dtype=np.float32)
-        
-        right = np.cross(forward, up)
-        
-        self.left_cam.x, self.left_cam.y, self.left_cam.z = (new_pos - half * right).tolist()
-        self.right_cam.x, self.right_cam.y, self.right_cam.z = (new_pos + half * right).tolist()
-        
-        left_cam_pos = np.array([self.left_cam.x, self.left_cam.y, self.left_cam.z])
-        left_cam_target = np.array([self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t])
-        self.left_cam.view_matrix =  p.computeViewMatrix(left_cam_pos, left_cam_target, [0, 1, 0]) 
 
+        # compute camera up from the wrist orientation (same as Camera.match_wrist)
+        mat = p.getMatrixFromQuaternion(link_orn)
+        R = np.array(mat).reshape(3, 3)
+        up = R.dot(np.array([0.0, 0.0, 1.0]))
+
+        # compute and normalize right vector
+        right = np.cross(forward, up)
+        right = right / (np.linalg.norm(right) + 1e-8)
+
+        # set stereo camera positions (shift along right)
+        left_pos = (new_pos - half * right).tolist()
+        right_pos = (new_pos + half * right).tolist()
+        self.left_cam.x, self.left_cam.y, self.left_cam.z = left_pos
+        self.right_cam.x, self.right_cam.y, self.right_cam.z = right_pos
+
+        # set targets first, then compute view matrices using the same up
         self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t = new_target
         self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t = new_target
 
-        right_cam_pos = np.array([self.right_cam.x, self.right_cam.y, self.right_cam.z])
-        right_cam_target = np.array([self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t])
-        self.right_cam.view_matrix =  p.computeViewMatrix(right_cam_pos, right_cam_target, [0, 1, 0]) 
+        left_cam_pos = [self.left_cam.x, self.left_cam.y, self.left_cam.z]
+        left_cam_target = [self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t]
+        self.left_cam.view_matrix = p.computeViewMatrix(left_cam_pos, left_cam_target, up.tolist())
+
+        right_cam_pos = [self.right_cam.x, self.right_cam.y, self.right_cam.z]
+        right_cam_target = [self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t]
+        self.right_cam.view_matrix = p.computeViewMatrix(right_cam_pos, right_cam_target, up.tolist())
+
+        print("[MATCH WRIST] LEFT CAM: ", left_cam_pos)
+        print("[MATCH WRIST] LEFT TGT: ", left_cam_target)
+        print("[MATCH WRIST] RIGHT CAM: ", right_cam_pos)
+        print("[MATCH WRIST] RIGHT TGT: ", right_cam_target)
+        print("[MATCH WRIST] RIGHT TGT: ", right_cam_target)
 
     def get_stereo_pair(self):
         left_rgb, _, left_seg = self.left_cam.get_cam_img()
