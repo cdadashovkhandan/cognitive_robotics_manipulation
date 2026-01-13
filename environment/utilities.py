@@ -222,7 +222,7 @@ class Camera:
         Method to get images from camera
         return:
         rgb
-        depth
+        depth   
         segmentation mask
         """
         
@@ -380,10 +380,12 @@ class StereoCamera(Camera):
         up = R.dot(np.array([0.0, 0.0, 1.0]))
 
         # compute and normalize right vector
-        right = np.cross(forward, up)
-        right = right / (np.linalg.norm(right) + 1e-8)
+        # right = np.cross(forward, up)
+        # right = right / (np.linalg.norm(right) + 1e-8)
+        right = np.array([1, 0, 0])
 
         # set stereo camera positions (shift along right)
+        print("right: ", right)
         left_pos = (new_pos - half * right).tolist()
         right_pos = (new_pos + half * right).tolist()
         self.left_cam.x, self.left_cam.y, self.left_cam.z = left_pos
