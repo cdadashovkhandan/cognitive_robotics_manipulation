@@ -241,7 +241,6 @@ class Camera:
         if exclude_ids:
             rgb, depth, seg = self.exclude_items(rgb, depth, seg, exclude_ids)
 
-
         return rgb, depth, seg
 
     def exclude_items(self, rgb, depth, seg, exclude_ids):
@@ -308,10 +307,10 @@ class StereoCamera(Camera):
     def __init__(self,
                  cam_pos, cam_target,
                  near, far, size, fov,
-                 baseline_m: float = 0.3,
+                 baseline_m: float = 0.35,
                  num_disparities: int = 128,
                  block_size: int = 7,
-                 invalid_depth_value: float = 0.0,
+                 invalid_depth_value: float = 1.0,
                  camera_mode: str = "fixed"):
         self.baseline_m = float(baseline_m)
         self.num_disparities = int(num_disparities)
@@ -421,19 +420,17 @@ class StereoCamera(Camera):
 
         if link_pos is not None and link_orn is not None:
             self.match_wrist(link_pos, link_orn)
-            
+
         left_rgb, right_rgb, left_seg = self.get_stereo_pair()
 
-        depth_buf = self.stereo.estimate_depth_buffer(
+        depth_m = self.stereo.estimate_depth(
             left_rgb, right_rgb,
             K=self.K,
             baseline_m=self.baseline_m,
-            near=self.near,
-            far=self.far,
             invalid_value=self.invalid_depth_value
         )
 
         if exclude_ids:
-            left_rgb, depth_buf, left_seg = self.exclude_items(left_rgb, depth_buf, left_seg, exclude_ids)
+            left_rgb, depth_m, left_seg = self.exclude_items(left_rgb, depth_m, left_seg, exclude_ids)
 
-        return left_rgb, depth_buf, left_seg
+        return left_rgb, depth_m, left_seg

@@ -1,0 +1,20 @@
+Total:
+Grasp acc=0.325 (52/160) --- Manipulation acc=0.319 (51/160) 
+
+Accuracy per object:
+YcbBanana: Grasp acc=0.095 (2/21) --- Manipulation acc=0.095 (2/21) 
+YcbChipsCan: Grasp acc=1.000 (4/4) --- Manipulation acc=0.750 (3/4) 
+YcbCrackerBox: Grasp acc=0.250 (2/8) --- Manipulation acc=0.250 (2/8) 
+YcbFoamBrick: Grasp acc=0.150 (3/20) --- Manipulation acc=0.150 (3/20) 
+YcbGelatinBox: Grasp acc=1.000 (4/4) --- Manipulation acc=1.000 (4/4) 
+YcbHammer: Grasp acc=0.000 (0/27) --- Manipulation acc=0.000 (0/27) 
+YcbMasterChefCan: Grasp acc=0.538 (7/13) --- Manipulation acc=0.538 (7/13) 
+YcbMediumClamp: Grasp acc=0.400 (2/5) --- Manipulation acc=0.400 (2/5) 
+YcbMustardBottle: Grasp acc=1.000 (5/5) --- Manipulation acc=1.000 (5/5) 
+YcbPear: Grasp acc=1.000 (1/1) --- Manipulation acc=1.000 (1/1) 
+YcbPottedMeatCan: Grasp acc=0.750 (6/8) --- Manipulation acc=0.750 (6/8) 
+YcbPowerDrill: Grasp acc=1.000 (3/3) --- Manipulation acc=1.000 (3/3) 
+YcbScissors: Grasp acc=0.444 (4/9) --- Manipulation acc=0.444 (4/9) 
+YcbStrawberry: Grasp acc=0.308 (4/13) --- Manipulation acc=0.308 (4/13) 
+YcbTennisBall: Grasp acc=0.400 (2/5) --- Manipulation acc=0.400 (2/5) 
+YcbTomatoSoupCan: Grasp acc=0.214 (3/14) --- Manipulation acc=0.214 (3/14) 
