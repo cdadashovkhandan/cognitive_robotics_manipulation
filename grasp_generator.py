@@ -130,7 +130,7 @@ class GraspGenerator:
             return None
 
         # Use a moderate quantile to approximate the closest visible surface without being dominated by rare outliers.
-        d_est = float(np.quantile(vals, 0.005))
+        d_est = float(np.quantile(vals, 0.0005))
         # Alternatively (more conservative):
         # d_est = float(np.median(vals))
 
@@ -152,6 +152,10 @@ class GraspGenerator:
 
         # Camera space -> robot base frame
         robot_frame_ref = np.matmul(self.cam_to_robot_base(), cam_space)
+
+        if self.use_meter:
+            z_down = 0.05
+            robot_frame_ref[2] -= z_down
 
         # Compute roll
         roll = grasp.angle * -1 + self.IMG_ROTATION
