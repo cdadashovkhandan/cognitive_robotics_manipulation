@@ -104,7 +104,7 @@ class GrasppingScenarios():
         if camera_type == "rgbd":
             camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode) 
         elif camera_type == "stereo":
-            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), 1.0, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45, camera_mode = camera_mode)
+            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.1), 0.3, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 50, camera_mode = camera_mode)
         else:
             raise ValueError("Invalid camera type")
         
@@ -132,7 +132,7 @@ class GrasppingScenarios():
         if camera_mode == "wrist":
             link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[:2]
         
-        generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
+        generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device, use_meter=(camera_type == "stereo"))
         
         objects.shuffle_objects()
         for i in range(runs):
@@ -171,6 +171,8 @@ class GrasppingScenarios():
                             
                         failed_grasp_counter += 1                 
                         continue
+                    else:
+                        failed_grasp_counter = 0
 
                     #print ("grasps.length = ", len(grasps))
                     if (idx > len(grasps)-1):  
@@ -217,6 +219,8 @@ class GrasppingScenarios():
                         
                         if save_name is not None:
                             os.rename(save_name + '.png', save_name + f'_SUCCESS_grasp{i}.png')
+
+                        break
                         
 
                     else:
@@ -259,13 +263,16 @@ class GrasppingScenarios():
         # camera = StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), 1.0, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45)
         camera = self.setup_camera()
         env = Environment(camera, vis=vis, debug=debug, finger_length=0.06)
-        
+
+        link_pos = None
+        link_orn = None
+
         if camera_mode == "wrist":
             link_pos, link_orn = p.getLinkState(env.robot_id, env.eef_id)[:2]
             camera.match_wrist(link_pos, link_orn)
         
         
-        generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
+        generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device, use_meter=(camera_type == "stereo"))
 
         
         for i in range(runs):

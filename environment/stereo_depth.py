@@ -44,7 +44,7 @@ class StereoDepthSGBM:
         P1 = 8 * 1 * block_size * block_size
         P2 = 32 * 1 * block_size * block_size
 
-        self.matcher = cv2.StereoSGBM_create(
+        self.matcherL = cv2.StereoSGBM_create(
             minDisparity=min_disparity,
             numDisparities=num_disparities,
             blockSize=block_size,
@@ -52,37 +52,46 @@ class StereoDepthSGBM:
             P2=P2,
             disp12MaxDiff=1,
             uniquenessRatio=10,
-            speckleWindowSize=100,
-            speckleRange=2,
+            speckleWindowSize=50,
+            speckleRange=0,
             preFilterCap=63,
             mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY
         )
 
-    def estimate_depth(self,
-                       left_rgb: np.ndarray,
-                       right_rgb: np.ndarray,
-                       K: Intrinsics,
-                       baseline_m: float,
-                       invalid_value: float = 1.0) -> np.ndarray:
-        """
-        Returns depth map in meters (float32). Invalid pixels set to NaN by default.
-        Assumes images are rectified (epipolar lines horizontal).
-        """
+        if hasattr(cv2, "ximgproc"):
+            self.matcherR = cv2.ximgproc.createRightMatcher(self.matcherL)
+            self.wls = cv2.ximgproc.createDisparityWLSFilter(matcher_left=self.matcherL)
+            self.wls.setLambda(3000)  # 3000~20000
+            self.wls.setSigmaColor(1.2)  # 0.8~2.0
+        else:
+            self.matcherR = None
+            self.wls = None
+
+    def estimate_depth(self, left_rgb, right_rgb, K, baseline_m, invalid_value=1.0):
         if left_rgb.shape != right_rgb.shape:
             raise ValueError("left/right image shapes do not match")
 
-        # grayscale matching
-        left_gray = cv2.cvtColor(left_rgb, cv2.COLOR_RGB2GRAY)
-        right_gray = cv2.cvtColor(right_rgb, cv2.COLOR_RGB2GRAY)
+        left_gray = cv2.cvtColor(left_rgb, cv2.COLOR_RGBA2GRAY)
+        right_gray = cv2.cvtColor(right_rgb, cv2.COLOR_RGBA2GRAY)
 
-        # disparity: CV_16S, scaled by 16
-        disp = self.matcher.compute(left_gray, right_gray).astype(np.float32) / 16.0
+        # reduce noise
+        left_gray = cv2.GaussianBlur(left_gray, (3, 3), 0)
+        right_gray = cv2.GaussianBlur(right_gray, (3, 3), 0)
 
-        # Invalid disparity (<=0) cannot be used to calculate depth.
-        valid = disp > 0.5  # can adjust
+        if self.wls is not None:
+            dispL = self.matcherL.compute(left_gray, right_gray)  # int16, *16
+            dispR = self.matcherR.compute(right_gray, left_gray)  # int16, *16
+
+            # WLS
+            dispF = self.wls.filter(dispL, left_gray, None, dispR)
+            disp = dispF.astype(np.float32) / 16.0
+        else:
+            disp = self.matcherL.compute(left_gray, right_gray).astype(np.float32) / 16.0
+
+        # valid：>0 and < num_disparities
+        valid = (disp > 1.0) & (disp < (self.num_disparities - 1))
+
         depth = np.full(disp.shape, invalid_value, dtype=np.float32)
-
-        # Z = f * B / d
         depth[valid] = (K.fx * baseline_m) / disp[valid]
 
         print("disp min/max/mean:", float(np.nanmin(disp)), float(np.nanmax(disp)), float(np.nanmean(disp)))
@@ -106,7 +115,7 @@ class StereoDepthSGBM:
         - near/far MUST match the projection settings used in your Camera.
         - invalid_value defaults to 0.0 to mimic "no depth" style values, but you can set 1.0 if you prefer.
         """
-        depth_m = self.estimate_depth(left_rgb, right_rgb, K, baseline_m, invalid_value=np.nan)
+        depth_m = self.estimate_depth(left_rgb, right_rgb, K, baseline_m, invalid_value=invalid_value)
         depth_buf = meters_to_depth_buffer(depth_m, near=near, far=far, invalid_value=invalid_value)
 
         print("left_rgb", left_rgb.dtype, left_rgb.shape, left_rgb.min(), left_rgb.max())

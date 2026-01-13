@@ -233,9 +233,9 @@ class Camera:
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        # rgb = np.array(rgb, dtype=np.uint8).reshape((_h, _w, 4))
-        # depth = np.array(depth).reshape((_h, _w))
-        # seg = np.array(seg).reshape((_h, _w))
+        rgb = np.array(rgb, dtype=np.uint8).reshape((_h, _w, 4))
+        depth = np.array(depth).reshape((_h, _w))
+        seg = np.array(seg).reshape((_h, _w))
 
         
 
@@ -312,10 +312,10 @@ class StereoCamera(Camera):
     def __init__(self,
                  cam_pos, cam_target,
                  near, far, size, fov,
-                 baseline_m: float = 0.3,
+                 baseline_m: float = 0.35,
                  num_disparities: int = 128,
                  block_size: int = 7,
-                 invalid_depth_value: float = 0.0,
+                 invalid_depth_value: float = 1.0,
                  camera_mode: str = "fixed"):
         self.baseline_m = float(baseline_m)
         self.num_disparities = int(num_disparities)
@@ -377,9 +377,9 @@ class StereoCamera(Camera):
         forward = new_target - new_pos
         forward = forward / (np.linalg.norm(forward) + 1e-8)
         up = np.array([0, 1, 0], dtype=np.float32)
-        
+
         right = np.cross(forward, up)
-        
+
         self.left_cam.x, self.left_cam.y, self.left_cam.z = (new_pos - half * right).tolist()
         self.right_cam.x, self.right_cam.y, self.right_cam.z = (new_pos + half * right).tolist()
 
@@ -398,19 +398,17 @@ class StereoCamera(Camera):
 
         if link_pos is not None and link_orn is not None:
             self.match_wrist(link_pos, link_orn)
-            
+
         left_rgb, right_rgb, left_seg = self.get_stereo_pair()
 
-        depth_buf = self.stereo.estimate_depth_buffer(
+        depth_m = self.stereo.estimate_depth(
             left_rgb, right_rgb,
             K=self.K,
             baseline_m=self.baseline_m,
-            near=self.near,
-            far=self.far,
             invalid_value=self.invalid_depth_value
         )
 
         if exclude_ids:
-            left_rgb, depth_buf, left_seg = self.exclude_items(left_rgb, depth_buf, left_seg, exclude_ids)
+            left_rgb, depth_m, left_seg = self.exclude_items(left_rgb, depth_m, left_seg, exclude_ids)
 
-        return left_rgb, depth_buf, left_seg
+        return left_rgb, depth_m, left_seg
