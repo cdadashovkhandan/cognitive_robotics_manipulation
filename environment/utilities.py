@@ -189,6 +189,12 @@ class Camera:
 
         self.rec_id = None
 
+
+        fov_rad = math.radians(self.fov)
+        fy = (self.height / 2.0) / math.tan(fov_rad / 2.0)
+        self.fx = fy * (self.width / self.height)
+        self.K = Intrinsics(fx=self.fx, fy=fy, cx=self.width / 2.0, cy=self.height / 2.0)
+
     def match_wrist(self, link_pos, link_orn):
         """
         Reposition camera to be in the same place as the end effector (with offset) if Eye On Hand mode is enabled.
