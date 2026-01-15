@@ -106,7 +106,8 @@ class GrasppingScenarios():
             camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode = camera_mode) 
         elif camera_type == "stereo":
             # near_plane = 0.01 if camera_mode == "wrist" else 0.3
-            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 50, camera_mode = camera_mode)
+            baseline_m = 0.1 if camera_mode == "wrist" else 0.35 
+            camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 50, camera_mode = camera_mode, baseline_m=baseline_m)
         else:
             raise ValueError("Invalid camera type")
         
@@ -237,7 +238,7 @@ class GrasppingScenarios():
                             p.removeUserDebugItem(debugID)
 
         data.write_json(self.network_model)
-        summarize(data.save_dir, runs, self.network_model)
+        summarize(data.save_dir, runs, self.network_model, camera_mode, camera_type)
 
 
     def packed_or_pile_scenario(self,runs, scenario, device, vis, output, debug):
@@ -434,6 +435,7 @@ if __name__ == '__main__':
 
     args = parse_args()
     output = args.output
+    print("SAVING OUTPUT?", output)
     runs = args.runs
     ATTEMPTS = args.attempts
     device=args.device

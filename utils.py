@@ -293,11 +293,13 @@ def plot(path, tries, target, grasp, trials):
     plt.savefig(path+'/plot.png')
 
 
-def write_summary(path, tries, target, grasp):
+def write_summary(path, tries, target, grasp, camera_mode, camera_type):
     with open(path + '/summary.txt', 'w') as f:
         total_tries = sum(tries.values())
         total_target = sum(target.values())
-        total_grasp = sum(grasp.values())
+        total_grasp = sum(grasp.values())        
+
+        f.write(f'Camera mode: {camera_mode}, Camera Type: {camera_type}\n')
 
         f.write('Total:\n')
 
@@ -330,7 +332,7 @@ def write_summary(path, tries, target, grasp):
                 f'--- Manipulation acc={n_t/n_tries:.3f} ({n_t}/{n_tries}) \n'
             )
 
-def summarize(path, trials,modelname):
+def summarize(path, trials,modelname, camera_mode, camera_type):
     # with open(path+'/data_tries.json') as data:
     #     tries = json.load(data)
     # with open(path+'/data_target.json') as data:
@@ -345,7 +347,7 @@ def summarize(path, trials,modelname):
         grasp = json.load(data)
 
     plot(path, tries, target, grasp, trials)
-    write_summary(path, tries, target, grasp)
+    write_summary(path, tries, target, grasp, camera_mode, camera_type)
 
 
 def plot_specific_model(path, tries, target, grasp, trials, modelname):

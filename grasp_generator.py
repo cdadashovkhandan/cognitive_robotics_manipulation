@@ -145,6 +145,7 @@ class GraspGenerator:
         # Alternatively (more conservative):
         # d_est = float(np.median(vals))
 
+
         # Convert depth to meters
         if self.use_meter:
             # Stereo: depth already in meters
@@ -153,6 +154,9 @@ class GraspGenerator:
             # Depth buffer: convert via near/far
             z_p = self._depthbuf_to_meters(d_est, self.near, self.far)
 
+
+        # TODO: messily copy-pasted AI-generated code. It works, but clean it up.
+        
         # # Convert pixel coordinates to meters in image plane
         # x_m = x_p / self.PIX_CONVERSION
         # y_m = y_p / self.PIX_CONVERSION
