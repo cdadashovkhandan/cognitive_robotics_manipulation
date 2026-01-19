@@ -69,14 +69,9 @@ class GraspGenerator:
         return self.get_transform_matrix(self.camera.x, self.camera.y, self.camera.z, self.cam_rotation)
 
     def get_transform_matrix(self, x, y, z, rot):
-        #TODO: Cleanup
-        wrist_mode = self.camera.camera_mode == "wrist"
-        scale_factor_x = 1 #abs(0.8 / x) if wrist_mode else 1
-        scale_factor_y = 1 #abs(0.8 / y) if wrist_mode else 1
-        print("SCALE FACTOR:", (scale_factor_x, scale_factor_y))
         return np.array([
-                        [np.cos(rot) / scale_factor_x,   -np.sin(rot),   0,  x],
-                        [np.sin(rot),   np.cos(rot) / scale_factor_y,    0,  y],
+                        [np.cos(rot),   -np.sin(rot),   0,  x],
+                        [np.sin(rot),   np.cos(rot),    0,  y],
                         [0,             0,              1,  z],
                         [0,             0,              0,  1]
                         ])
@@ -104,7 +99,7 @@ class GraspGenerator:
         - If self.use_meter=False, depth_img is OpenGL/PyBullet depth buffer in [0,1].
         """
         print("-----GRASP TO ROBOT FRAME-----")
-        print("Grasp:", grasp)
+        # print("Grasp:", grasp)
 
         # Grasp center pixel (x, y in image coordinates)
         x_p, y_p = grasp.center[0], grasp.center[1]
@@ -142,8 +137,6 @@ class GraspGenerator:
 
         # Use a moderate quantile to approximate the closest visible surface without being dominated by rare outliers.
         d_est = float(np.quantile(vals, 0.0005))
-        # Alternatively (more conservative):
-        # d_est = float(np.median(vals))
 
 
         # Convert depth to meters
@@ -154,24 +147,15 @@ class GraspGenerator:
             # Depth buffer: convert via near/far
             z_p = self._depthbuf_to_meters(d_est, self.near, self.far)
 
-
-        # TODO: messily copy-pasted AI-generated code. It works, but clean it up.
-        
-        # # Convert pixel coordinates to meters in image plane
-        # x_m = x_p / self.PIX_CONVERSION
-        # y_m = y_p / self.PIX_CONVERSION
-
-        # # Image space -> camera space
-        # img_xyz = np.array([x_m, y_m, -z_p, 1.0])
-        # Map grasp pixel (in the network crop) back to full image pixel coordinates
+        # Image space -> camera space
         u = grasp.center[0] + self.cam_data.top_left[0]  # column (x)
         v = grasp.center[1] + self.cam_data.top_left[1]  # row (y)
-        # Convert pixel -> camera coordinates using intrinsics and measured depth z_p
-        # X_cam = (u - cx) * Z / fx ; Y_cam = (v - cy) * Z / fy
+
+        # Convert pixel -> camera coordinates
         x_cam = (u - self.camera.K.cx) * z_p / self.camera.K.fx
         y_cam = (v - self.camera.K.cy) * z_p / self.camera.K.fy
-        print("X_CAM, Y_CAM: ", x_cam, y_cam)
-        # Image space -> camera space (z negative because convention used elsewhere)
+
+        # Image space -> camera space
         img_xyz = np.array([x_cam, y_cam, -z_p, 1.0])
         cam_space = np.matmul(self.img_to_cam, img_xyz)
 
@@ -188,16 +172,12 @@ class GraspGenerator:
             roll += np.pi
 
         # Pixel width -> gripper opening length
-        # opening_length = (grasp.length / int(self.MAX_GRASP * self.PIX_CONVERSION)) * self.MAX_GRASP
-        # Convert pixel width -> meters using focal length at measured depth:
-        # width_pixels = grasp.length (in network crop). Map to full-image pixels first:
         width_pixels = grasp.length * (self.cam_data.output_size / self.IMG_WIDTH)
-        # opening_length_m = (width_pixels * z_p) / fx
+
         opening_length = (width_pixels * z_p) / self.camera.K.fx
 
-        # obj_height = self.DIST_BACKGROUND - z_p
         # Estimate background distance dynamically from valid depth pixels in this frame.
-         # If depth is depth-buffer, convert the median to meters; if it's already meters, use it directly.
+        # If depth is depth-buffer, convert the median to meters; if it's already meters, use it directly.
         valid_mask = np.isfinite(depth_img)
         bg_est = None
         try:
@@ -220,7 +200,6 @@ class GraspGenerator:
 
 
 
-        print("z_p (meters):", z_p, "robot z:", robot_frame_ref[2])
         print("Robot frame grasp (x,y,z,roll,opening_length,obj_height):",
               robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[2],
               roll, opening_length, obj_height)

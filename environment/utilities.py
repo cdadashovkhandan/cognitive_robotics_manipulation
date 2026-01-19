@@ -239,9 +239,6 @@ class Camera:
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        # rgb = np.array(rgb, dtype=np.uint8).reshape((_h, _w, 4))
-        # depth = np.array(depth).reshape((_h, _w))
-        # seg = np.array(seg).reshape((_h, _w))
 
         # Mask out pixels of excluded objects
         if exclude_ids:
@@ -366,7 +363,6 @@ class StereoCamera(Camera):
 
     def match_wrist(self, link_pos, link_orn):
 
-        # print("stereo match wrist called!")
         # reposition center to robot wrist
         super().match_wrist(link_pos, link_orn)
 
@@ -384,9 +380,6 @@ class StereoCamera(Camera):
         R = np.array(mat).reshape(3, 3)
         up = R.dot(np.array([0.0, 0.0, 1.0]))
 
-        # compute and normalize right vector
-        # right = np.cross(forward, up)
-        # right = right / (np.linalg.norm(right) + 1e-8)
         right = np.array([1, 0, 0])
 
         # set stereo camera positions (shift along right)
@@ -407,12 +400,6 @@ class StereoCamera(Camera):
         right_cam_pos = [self.right_cam.x, self.right_cam.y, self.right_cam.z]
         right_cam_target = [self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t]
         self.right_cam.view_matrix = p.computeViewMatrix(right_cam_pos, right_cam_target, up.tolist())
-
-        print("[MATCH WRIST] LEFT CAM: ", left_cam_pos)
-        print("[MATCH WRIST] LEFT TGT: ", left_cam_target)
-        print("[MATCH WRIST] RIGHT CAM: ", right_cam_pos)
-        print("[MATCH WRIST] RIGHT TGT: ", right_cam_target)
-        print("[MATCH WRIST] RIGHT TGT: ", right_cam_target)
 
     def get_stereo_pair(self):
         left_rgb, _, left_seg = self.left_cam.get_cam_img()
