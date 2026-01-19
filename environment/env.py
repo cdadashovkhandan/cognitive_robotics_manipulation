@@ -1,4 +1,4 @@
-from environment.utilities import setup_sisbot, Camera
+from environment.utilities import setup_sisbot, Camera, StereoCamera
 import math
 import time
 import numpy as np
@@ -22,7 +22,7 @@ class Environment:
     Z_TABLE_TOP = 0.785
     GRIP_REDUCTION = 0.60
 
-    def __init__(self, camera: Camera, vis=False, debug=False, gripper_type='140', finger_length=0.06) -> None:
+    def __init__(self, camera, vis=False, debug=False, gripper_type='140', finger_length=0.06) -> None:
         self.vis = vis
         self.debug = debug
         self.camera = camera
@@ -103,7 +103,7 @@ class Environment:
             dist = 1.5
             yaw = 30
             pitch = -50
-            target = [camera.x_t, camera.y_t, camera.z_t]
+            target = [0.1, -0.30, 0.95]
             p.resetDebugVisualizerCamera(dist, yaw, pitch, target)
 
             # camera model

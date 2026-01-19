@@ -5,6 +5,8 @@ import functools
 import os
 from datetime import datetime
 import numpy as np
+import math
+from .stereo_depth import StereoDepthSGBM, Intrinsics
 
 
 def setup_sisbot(p, robotID, gripper_type):
@@ -172,7 +174,7 @@ def setup_sisbot_force(p, robotID, gripper_type):
 
 
 class Camera:
-    def __init__(self, cam_pos, cam_target, near, far, size, fov, camera_mode):
+    def __init__(self, cam_pos, cam_target, near, far, size, fov, camera_mode = "fixed"):
         self.x, self.y, self.z = cam_pos
         self.x_t, self.y_t, self.z_t = cam_target
         self.width, self.height = size
@@ -186,6 +188,12 @@ class Camera:
         self.view_matrix = p.computeViewMatrix(cam_pos, cam_target, [0, 1, 0])
 
         self.rec_id = None
+
+
+        fov_rad = math.radians(self.fov)
+        fy = (self.height / 2.0) / math.tan(fov_rad / 2.0)
+        self.fx = fy * (self.width / self.height)
+        self.K = Intrinsics(fx=self.fx, fy=fy, cx=self.width / 2.0, cy=self.height / 2.0)
 
     def match_wrist(self, link_pos, link_orn):
         """
@@ -220,7 +228,7 @@ class Camera:
         Method to get images from camera
         return:
         rgb
-        depth
+        depth   
         segmentation mask
         """
         
@@ -231,45 +239,47 @@ class Camera:
         _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
                                                    self.view_matrix, self.projection_matrix,
                                                    )
-        
-
 
         # Mask out pixels of excluded objects
         if exclude_ids:
-            print("Excluding robot...")
-            rgb = np.reshape(rgb, (self.height, self.width, 4))[:, :, 0:3]
-            depth = np.reshape(depth, (self.height, self.width))
-            seg = np.reshape(seg, (self.height, self.width)).astype(np.int32)
-            exclude_set = set(exclude_ids)
-            # segmentation encodes objectUniqueId (sometimes with link info in higher bits).
-            # Use lower 24 bits to be robust across versions.
-            
-            unique_ids = np.unique(seg)
-            print("UNIQUE ELEMS IN SEG MASK: ", unique_ids)
-
-            seg_obj = seg & 0xFFFFFF
-            mask = np.zeros_like(seg_obj, dtype=bool)
-            for eid in exclude_set:
-                mask |= (seg_obj == eid)
-            # Apply mask: zero RGB and set depth to maximum (so detectors relying on depth ignore them)
-
-            if mask.any():
-                inv_mask = ~mask
-                if unique_ids.size > 2:
-                    bg_depth = float(np.median(depth[inv_mask]))
-                    bg_rgb = rgb[inv_mask].mean(axis=0)
-                    rgb[mask] = bg_rgb
-                    depth[mask] = bg_depth
-                else:
-                    # only robot arm is present
-                    rgb[mask] = rgb[inv_mask][0]
-                    depth[mask] = depth[inv_mask][0]
-                    # clear segmentation for excluded pixels
-                seg[mask] = 0
-
-                
+            rgb, depth, seg = self.exclude_items(rgb, depth, seg, exclude_ids)
 
         return rgb, depth, seg
+
+    def exclude_items(self, rgb, depth, seg, exclude_ids):
+        print("Excluding robot...")
+        rgb = np.reshape(rgb, (self.height, self.width, 4))[:, :, 0:3]
+        depth = np.reshape(depth, (self.height, self.width))
+        seg = np.reshape(seg, (self.height, self.width)).astype(np.int32)
+        exclude_set = set(exclude_ids)
+        # segmentation encodes objectUniqueId (sometimes with link info in higher bits).
+        # Use lower 24 bits to be robust across versions.
+        
+        unique_ids = np.unique(seg)
+        print("UNIQUE ELEMS IN SEG MASK: ", unique_ids)
+
+        seg_obj = seg & 0xFFFFFF
+        mask = np.zeros_like(seg_obj, dtype=bool)
+        for eid in exclude_set:
+            mask |= (seg_obj == eid)
+        # Apply mask: zero RGB and set depth to maximum (so detectors relying on depth ignore them)
+
+        if mask.any():
+            inv_mask = ~mask
+            if unique_ids.size > 2:
+                bg_depth = float(np.median(depth[inv_mask]))
+                bg_rgb = rgb[inv_mask].mean(axis=0)
+                rgb[mask] = bg_rgb
+                depth[mask] = bg_depth
+            else:
+                # only robot arm is present
+                rgb[mask] = rgb[inv_mask][0]
+                depth[mask] = depth[inv_mask][0]
+                # clear segmentation for excluded pixels
+            seg[mask] = 0
+
+        return rgb, depth, seg
+
 
     def start_recording(self, save_dir):
         if not os.path.exists(save_dir):
@@ -283,3 +293,137 @@ class Camera:
     def stop_recording(self):
         p.stopStateLogging(self.rec_id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1)
+
+class StereoCamera(Camera):
+    """
+    Stereo camera wrapper that returns a PyBullet-like depth buffer computed from stereo RGB.
+
+    It constructs two parallel cameras (left/right) by shifting the camera position/target
+    along the camera's right axis by +/- baseline/2.
+
+    Output of get_cam_img() matches Camera.get_cam_img():
+      - rgb: left RGB
+      - depth: non-linear depth buffer in [0,1]
+      - seg: left segmentation mask
+    """
+
+    def __init__(self,
+                 cam_pos, cam_target,
+                 near, far, size, fov,
+                 baseline_m: float = 0.35,
+                 num_disparities: int = 128,
+                 block_size: int = 7,
+                 invalid_depth_value: float = 1.0,
+                 camera_mode: str = "fixed"):
+        self.baseline_m = float(baseline_m)
+        self.num_disparities = int(num_disparities)
+        self.block_size = int(block_size)
+        self.invalid_depth_value = float(invalid_depth_value)
+        self.camera_mode = camera_mode
+
+        self.x, self.y, self.z = cam_pos
+        self.x_t, self.y_t, self.z_t = cam_target
+        self.width, self.height = size
+        self.near, self.far = near, far
+        self.fov = fov
+
+        # Compute camera right vector from forward and world up
+        cam_pos_np = np.array(cam_pos, dtype=np.float32)
+        cam_target_np = np.array(cam_target, dtype=np.float32)
+
+        forward = cam_target_np - cam_pos_np
+        forward = forward / (np.linalg.norm(forward) + 1e-8)
+
+        up = np.array([0, 1, 0], dtype=np.float32)
+        right = np.cross(forward, up)
+        right = right / (np.linalg.norm(right) + 1e-8)
+
+        half = 0.5 * self.baseline_m
+        left_pos = (cam_pos_np - half * right).tolist()
+        right_pos = (cam_pos_np + half * right).tolist()
+        left_target = cam_target_np.tolist()
+        right_target = cam_target_np.tolist()
+
+        print("Stereo left_pos:", left_pos, "right_pos:", right_pos, "baseline:", self.baseline_m)
+
+        self.left_cam = Camera(left_pos, left_target, near, far, size, fov)
+        self.right_cam = Camera(right_pos, right_target, near, far, size, fov)
+
+        # Compute fx in pixel units (PyBullet fov is vertical FOV in degrees)
+        fov_rad = math.radians(self.fov)
+        fy = (self.height / 2.0) / math.tan(fov_rad / 2.0)
+        self.fx = fy * (self.width / self.height)
+
+        self.stereo = StereoDepthSGBM(
+            num_disparities=self.num_disparities,
+            block_size=self.block_size,
+            min_disparity=0
+        )
+        self.K = Intrinsics(fx=self.fx, fy=fy, cx=self.width / 2.0, cy=self.height / 2.0)
+
+    def match_wrist(self, link_pos, link_orn):
+
+        # reposition center to robot wrist
+        super().match_wrist(link_pos, link_orn)
+
+        # offset left and right cams (and targets) based on this new position
+        new_pos = np.array([self.x, self.y, self.z])
+        new_target = np.array([self.x_t, self.y_t, self.z_t])
+        half = 0.5 * self.baseline_m
+
+        # compute forward and up consistently with parent camera
+        forward = new_target - new_pos
+        forward = forward / (np.linalg.norm(forward) + 1e-8)
+
+        # compute camera up from the wrist orientation (same as Camera.match_wrist)
+        mat = p.getMatrixFromQuaternion(link_orn)
+        R = np.array(mat).reshape(3, 3)
+        up = R.dot(np.array([0.0, 0.0, 1.0]))
+
+        right = np.array([1, 0, 0])
+
+        # set stereo camera positions (shift along right)
+        print("right: ", right)
+        left_pos = (new_pos - half * right).tolist()
+        right_pos = (new_pos + half * right).tolist()
+        self.left_cam.x, self.left_cam.y, self.left_cam.z = left_pos
+        self.right_cam.x, self.right_cam.y, self.right_cam.z = right_pos
+
+        # set targets first, then compute view matrices using the same up
+        self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t = new_target
+        self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t = new_target
+
+        left_cam_pos = [self.left_cam.x, self.left_cam.y, self.left_cam.z]
+        left_cam_target = [self.left_cam.x_t, self.left_cam.y_t, self.left_cam.z_t]
+        self.left_cam.view_matrix = p.computeViewMatrix(left_cam_pos, left_cam_target, up.tolist())
+
+        right_cam_pos = [self.right_cam.x, self.right_cam.y, self.right_cam.z]
+        right_cam_target = [self.right_cam.x_t, self.right_cam.y_t, self.right_cam.z_t]
+        self.right_cam.view_matrix = p.computeViewMatrix(right_cam_pos, right_cam_target, up.tolist())
+
+    def get_stereo_pair(self):
+        left_rgb, _, left_seg = self.left_cam.get_cam_img()
+        right_rgb, _, _ = self.right_cam.get_cam_img()
+
+        diff = np.mean(np.abs(left_rgb.astype(np.int16) - right_rgb.astype(np.int16)))
+        print("mean abs RGB diff:", diff)
+        return left_rgb, right_rgb, left_seg
+
+    def get_cam_img(self, link_pos = None, link_orn = None, exclude_ids = None):
+
+        if link_pos is not None and link_orn is not None:
+            self.match_wrist(link_pos, link_orn)
+
+        left_rgb, right_rgb, left_seg = self.get_stereo_pair()
+
+        depth_m = self.stereo.estimate_depth(
+            left_rgb, right_rgb,
+            K=self.K,
+            baseline_m=self.baseline_m,
+            invalid_value=self.invalid_depth_value
+        )
+
+        if exclude_ids:
+            left_rgb, depth_m, left_seg = self.exclude_items(left_rgb, depth_m, left_seg, exclude_ids)
+
+        return left_rgb, depth_m, left_seg

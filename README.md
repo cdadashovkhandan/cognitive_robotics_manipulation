@@ -1,4 +1,29 @@
+# Cognitive Robotics Final Project Submission
+By Chingiz Dadashov-Khandan and Yuwen Zhou
+
+___
+
+
+This is the repository for the Cognitive Robotics Final Project submission.
+
+In order to run the newly implemented scenarios, use the two new CLI arguments:
+
+- `camera-type`: Specify what kind of camera is to be used. Available options:
+  - `rgbd` (default): The standard RealSense RGB-D camera
+  - `stereo`: Two cameras placed side by side relative to a central position
+- `camera-mode`: Specify how the camera should be placed. Available options:
+  - `fixed` (default): Eye-to-hand scenario
+  - `wrist`: Eye-in-hand scenario
+
+See the report for details on the implementation.
+
+
+Below follows the rest of the README in its original form:
+
 ## Coupling between Perception and Manipulation: Learning to Grasp Objects in Highly Cluttered Environments
+
+
+
 
 ###### [Hamidreza Kasaei](https://hkasaei.github.io/) | [cognitive robotics course](https://rugcognitiverobotics.github.io/) | [assignment description](https://github.com/SeyedHamidreza/cognitive_robotics_manipulation/blob/main/assignment_description.pdf) | [IRL-Lab](https://www.ai.rug.nl/irl-lab)
 ##
