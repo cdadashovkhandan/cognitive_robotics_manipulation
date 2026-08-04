@@ -99,13 +99,14 @@ class GrasppingScenarios():
         #     camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), 0.2, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, None, None) 
 
 
+        near_plane = 0.1
 
         center_x, center_y, center_z = 0.05, -0.52, self.CAM_Z
         if camera_type == "rgbd":
-            near_plane = 0.3 if camera_mode == "wrist" else 0.2
+            # near_plane = 0.3 if camera_mode == "wrist" else 0.2
             camera = Camera((center_x, center_y, center_z), (center_x, center_y, 0.785), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 40, camera_mode = camera_mode) 
         elif camera_type == "stereo":
-            near_plane = 0.01 if camera_mode == "wrist" else 0.3
+            # near_plane = 0.01 if camera_mode == "wrist" else 0.3
             camera= StereoCamera((center_x, center_y, center_z), (center_x, center_y, 0.7), near_plane, 2.0, (self.IMG_SIZE, self.IMG_SIZE), 45, camera_mode = camera_mode, baseline_m = 0.05)
         else:
             raise ValueError("Invalid camera type")
